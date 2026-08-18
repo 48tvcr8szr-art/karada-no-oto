@@ -1,5 +1,5 @@
-const CACHE_NAME = "body-sound-v3";
-const ASSETS = ["./?v=3", "./index.html", "./styles.css?v=3", "./app.js?v=2", "./manifest.webmanifest?v=2", "./icon.svg?v=2", "./apple-touch-icon.png?v=2"];
+const CACHE_NAME = "body-sound-v8";
+const ASSETS = ["./?v=8", "./index.html", "./styles.css?v=8", "./app.js?v=8", "./manifest.webmanifest?v=2", "./icon.svg?v=2", "./apple-touch-icon.png?v=2"];
 self.addEventListener("install", (event) => { event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener("activate", (event) => { event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", (event) => {

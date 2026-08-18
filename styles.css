@@ -69,6 +69,8 @@ legend, .memo-field { margin-bottom: 8px; color: #655a6b; font-size: 13px; font-
 .memo-field { display: block; }
 .memo-field input { margin-top: 7px; font-size: 15px; font-weight: 650; }
 .primary-button { min-height: 58px; border: 0; border-radius: 17px; background: linear-gradient(135deg, #df7ca2, #c95f8a); color: #fff; font-size: 18px; font-weight: 900; box-shadow: 0 9px 20px rgba(190,79,120,.22); }
+.draft-status { margin: -6px 0 0; color: #665a6b; text-align: center; font-size: 11px; font-weight: 750; }
+.draft-status.saved { color: #5c4a98; }
 .guidance-card { display: flex; gap: 13px; padding: 18px; margin-bottom: 13px; border-color: #d9b9c7; background: linear-gradient(145deg, #fff, #fdebf2); }
 .guidance-card.recheck { background: linear-gradient(145deg, #fff, #ebe4f7); border-color: #c6b6df; }
 .guidance-card.rest { background: linear-gradient(145deg, #fff8ee, #fde8ed); border-color: #dfb7bd; }

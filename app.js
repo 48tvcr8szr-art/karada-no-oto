@@ -5,6 +5,7 @@ let period = currentPeriod();
 const $ = (selector) => document.querySelector(selector);
 const el = {
   form: $("#bpForm"), systolic: $("#systolic"), diastolic: $("#diastolic"), pulse: $("#pulse"), memo: $("#memo"),
+  draftStatus: $("#draftStatus"),
   today: $("#todayLabel"), timingCard: $("#timingCard"), timingLabel: $("#timingLabel"), timingTitle: $("#timingTitle"),
   timingList: $("#timingList"), timeIcon: $("#timeIcon"), nightFields: $("#nightFields"), medicine: $("#medicine"),
   guidance: $("#guidanceCard"), guidanceTitle: $("#guidanceTitle"), guidanceText: $("#guidanceText"),
@@ -27,6 +28,8 @@ el.nightTime.value = state.settings.nightTime;
 
 document.querySelectorAll("[data-period]").forEach((button) => button.addEventListener("click", () => setPeriod(button.dataset.period)));
 el.form.addEventListener("submit", saveRecord);
+el.form.addEventListener("input", saveDraft);
+el.form.addEventListener("change", saveDraft);
 el.history.addEventListener("click", deleteRecord);
 el.settingsButton.addEventListener("click", () => el.settingsDialog.showModal());
 el.printButton.addEventListener("click", () => window.print());
@@ -52,6 +55,7 @@ function setPeriod(next) {
   el.timeIcon.textContent = info.icon;
   el.timingList.replaceChildren(...info.items.map((text) => Object.assign(document.createElement("li"), { textContent: text })));
   el.nightFields.hidden = period !== "night";
+  restoreDraft(period);
 }
 
 function saveRecord(event) {
@@ -66,12 +70,56 @@ function saveRecord(event) {
   const meal = period === "night" ? new FormData(el.form).get("meal") : null;
   const record = { id: crypto.randomUUID?.() || `${Date.now()}`, at: new Date().toISOString(), period, systolic, diastolic, pulse, feeling, meal, medicine: period === "night" && el.medicine.checked, memo: el.memo.value.trim() };
   state.records.unshift(record);
+  state.drafts[period] = null;
   persist();
   showGuidance(record);
   el.form.reset();
   el.medicine.checked = false;
+  el.draftStatus.textContent = "正式な記録として保存した。";
+  el.draftStatus.classList.add("saved");
   render();
   el.guidance.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function saveDraft() {
+  const formData = new FormData(el.form);
+  const draft = {
+    systolic: el.systolic.value,
+    diastolic: el.diastolic.value,
+    pulse: el.pulse.value,
+    memo: el.memo.value,
+    feeling: formData.get("feeling") || "usual",
+    meal: formData.get("meal") || "ate",
+    medicine: el.medicine.checked,
+    savedAt: new Date().toISOString()
+  };
+  state.drafts[period] = draft;
+  persist();
+  const now = new Date();
+  el.draftStatus.textContent = `入力途中を自動保存した（${now.getHours()}:${String(now.getMinutes()).padStart(2, "0")}）`;
+  el.draftStatus.classList.add("saved");
+}
+
+function restoreDraft(targetPeriod) {
+  const draft = state.drafts[targetPeriod];
+  el.form.reset();
+  el.systolic.value = draft?.systolic || "";
+  el.diastolic.value = draft?.diastolic || "";
+  el.pulse.value = draft?.pulse || "";
+  el.memo.value = draft?.memo || "";
+  const feeling = el.form.querySelector(`input[name="feeling"][value="${draft?.feeling || "usual"}"]`);
+  if (feeling) feeling.checked = true;
+  const meal = el.form.querySelector(`input[name="meal"][value="${draft?.meal || "ate"}"]`);
+  if (meal) meal.checked = true;
+  el.medicine.checked = Boolean(draft?.medicine);
+  if (draft?.savedAt) {
+    const saved = new Date(draft.savedAt);
+    el.draftStatus.textContent = `${targetPeriod === "morning" ? "朝" : "夜"}の入力途中を復元した（${saved.getHours()}:${String(saved.getMinutes()).padStart(2, "0")}保存）`;
+    el.draftStatus.classList.add("saved");
+  } else {
+    el.draftStatus.textContent = "入力途中も、このiPhoneに自動保存する。";
+    el.draftStatus.classList.remove("saved");
+  }
 }
 
 function showGuidance(record) {
@@ -275,10 +323,10 @@ function numberValue(value) { const digits = String(value).replace(/\D/g, ""); r
 function valid(value, min, max) { return Number.isFinite(value) && value >= min && value <= max; }
 function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 function loadState() {
-  const fallback = { records: [], settings: { morningTime: "07:00", nightTime: "21:30" } };
+  const fallback = { records: [], drafts: { morning: null, night: null }, settings: { morningTime: "07:00", nightTime: "21:30" } };
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return { records: Array.isArray(saved?.records) ? saved.records : [], settings: { ...fallback.settings, ...(saved?.settings || {}) } };
+    return { records: Array.isArray(saved?.records) ? saved.records : [], drafts: { ...fallback.drafts, ...(saved?.drafts || {}) }, settings: { ...fallback.settings, ...(saved?.settings || {}) } };
   } catch { return fallback; }
 }
 
