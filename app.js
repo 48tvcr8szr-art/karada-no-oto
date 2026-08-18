@@ -9,6 +9,9 @@ const el = {
   timingList: $("#timingList"), timeIcon: $("#timeIcon"), nightFields: $("#nightFields"), medicine: $("#medicine"),
   guidance: $("#guidanceCard"), guidanceTitle: $("#guidanceTitle"), guidanceText: $("#guidanceText"),
   avgSys: $("#avgSys"), avgDia: $("#avgDia"), avgPulse: $("#avgPulse"), averageMessage: $("#averageMessage"),
+  conditionSvg: $("#conditionSvg"), chartEmpty: $("#chartEmpty"), chartDates: $("#chartDates"),
+  doctorPeriod: $("#doctorPeriod"), conditionCounts: $("#conditionCounts"), doctorBpAverage: $("#doctorBpAverage"), doctorNightSummary: $("#doctorNightSummary"), doctorNotes: $("#doctorNotes"), doctorEmpty: $("#doctorEmpty"),
+  printButton: $("#printButton"), printRecordRows: $("#printRecordRows"), doctorCard: $("#doctorCard"),
   history: $("#historyList"), empty: $("#emptyMessage"), count: $("#recordCount"),
   settingsButton: $("#settingsButton"), settingsDialog: $("#settingsDialog"), morningTime: $("#morningTime"), nightTime: $("#nightTime"), saveSettings: $("#saveSettings")
 };
@@ -26,6 +29,10 @@ document.querySelectorAll("[data-period]").forEach((button) => button.addEventLi
 el.form.addEventListener("submit", saveRecord);
 el.history.addEventListener("click", deleteRecord);
 el.settingsButton.addEventListener("click", () => el.settingsDialog.showModal());
+el.printButton.addEventListener("click", () => window.print());
+let doctorWasOpen = false;
+window.addEventListener("beforeprint", () => { doctorWasOpen = el.doctorCard.open; el.doctorCard.open = true; });
+window.addEventListener("afterprint", () => { el.doctorCard.open = doctorWasOpen; });
 el.settingsDialog.addEventListener("close", () => {
   if (el.settingsDialog.returnValue !== "save") return;
   state.settings.morningTime = el.morningTime.value || "07:00";
@@ -71,7 +78,7 @@ function showGuidance(record) {
   const veryHigh = record.systolic >= 180 || record.diastolic >= 120;
   const high = record.systolic >= 160 || record.diastolic >= 100;
   const elevated = record.systolic >= 135 || record.diastolic >= 85;
-  const unwell = record.feeling !== "usual";
+  const unwell = record.feeling === "tired" || record.feeling === "worse";
   el.guidance.hidden = false;
   el.guidance.className = "guidance-card";
   if (veryHigh) {
@@ -106,6 +113,8 @@ function deleteRecord(event) {
 
 function render() {
   const recent = state.records.filter((record) => Date.now() - new Date(record.at).getTime() < 7 * 86400000);
+  renderConditionChart();
+  renderDoctorSummary(recent);
   setAverage(el.avgSys, recent, "systolic");
   setAverage(el.avgDia, recent, "diastolic");
   setAverage(el.avgPulse, recent, "pulse");
@@ -153,12 +162,111 @@ function recordElement(record) {
 }
 
 function recordSummary(record) {
-  const feelings = { usual: "いつもどおり", tired: "少ししんどい", rough: "かなりしんどい" };
+  const feelings = { good: "よかった", usual: "普通", tired: "しんどい", worse: "悪化", rough: "悪化" };
   const meals = { ate: "夕食：食べた", little: "夕食：少し", water: "夕食：水分だけ" };
   const parts = [feelings[record.feeling]];
   if (record.period === "night") parts.push(meals[record.meal], record.medicine ? "薬：飲んだ" : "薬：まだ");
   if (record.memo) parts.push(record.memo);
   return parts.filter(Boolean).join("・");
+}
+
+function renderConditionChart() {
+  const DAY = 86400000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today.getTime() - 27 * DAY);
+  const daily = new Map();
+  [...state.records].reverse().forEach((record) => {
+    const date = new Date(record.at);
+    date.setHours(0, 0, 0, 0);
+    if (date < start || date > today) return;
+    const key = date.toISOString().slice(0, 10);
+    daily.set(key, record);
+  });
+  const levels = { good: 0, usual: 1, tired: 2, worse: 3, rough: 3 };
+  const points = [];
+  for (let index = 0; index < 28; index += 1) {
+    const date = new Date(start.getTime() + index * DAY);
+    const record = daily.get(date.toISOString().slice(0, 10));
+    if (!record) continue;
+    points.push({ x: index * (280 / 27), y: 16.5 + levels[record.feeling] * 33, feeling: record.feeling === "rough" ? "worse" : record.feeling });
+  }
+  el.conditionSvg.replaceChildren();
+  if (points.length) {
+    const line = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    line.setAttribute("points", points.map((point) => `${point.x},${point.y}`).join(" "));
+    line.setAttribute("class", "condition-line");
+    el.conditionSvg.append(line);
+    points.forEach((point) => {
+      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      circle.setAttribute("cx", point.x);
+      circle.setAttribute("cy", point.y);
+      circle.setAttribute("r", "6");
+      circle.setAttribute("class", `condition-dot ${point.feeling}`);
+      el.conditionSvg.append(circle);
+    });
+  }
+  el.chartEmpty.hidden = points.length > 0;
+  const dateText = (date) => `${date.getMonth() + 1}/${date.getDate()}`;
+  el.chartDates.replaceChildren(
+    Object.assign(document.createElement("span"), { textContent: dateText(start) }),
+    Object.assign(document.createElement("span"), { textContent: dateText(today) })
+  );
+}
+
+function renderDoctorSummary(recentSeven) {
+  const DAY = 86400000;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(today.getTime() - 27 * DAY);
+  const daily = new Map();
+  [...state.records].reverse().forEach((record) => {
+    const date = new Date(record.at);
+    date.setHours(0, 0, 0, 0);
+    if (date < start || date > today) return;
+    daily.set(date.toISOString().slice(0, 10), record);
+  });
+  const labels = { good: "よかった", usual: "普通", tired: "しんどい", worse: "悪化", rough: "悪化" };
+  const counts = { good: 0, usual: 0, tired: 0, worse: 0 };
+  [...daily.values()].forEach((record) => { const key = record.feeling === "rough" ? "worse" : record.feeling; counts[key] = (counts[key] || 0) + 1; });
+  el.conditionCounts.replaceChildren(...["good", "usual", "tired", "worse"].map((key) => {
+    const box = document.createElement("div");
+    const label = document.createElement("span");
+    label.textContent = labels[key];
+    const value = document.createElement("strong");
+    value.textContent = `${counts[key]}日`;
+    box.append(label, value);
+    return box;
+  }));
+  const formatDay = (date) => `${date.getMonth() + 1}/${date.getDate()}`;
+  el.doctorPeriod.textContent = `${formatDay(start)}～${formatDay(today)}（記録 ${daily.size}日）`;
+  el.doctorBpAverage.textContent = recentSeven.length ? `${average(recentSeven, "systolic")}／${average(recentSeven, "diastolic")}　脈 ${average(recentSeven, "pulse")}` : "記録なし";
+  const nights = state.records.filter((record) => new Date(record.at) >= start && record.period === "night");
+  const medicineDays = nights.filter((record) => record.medicine).length;
+  const waterDays = nights.filter((record) => record.meal === "water").length;
+  el.doctorNightSummary.textContent = nights.length ? `${nights.length}回／服薬✓ ${medicineDays}・水分だけ ${waterDays}` : "記録なし";
+  const notes = [...daily.values()].filter((record) => ["tired", "worse", "rough"].includes(record.feeling)).reverse();
+  el.doctorNotes.replaceChildren(...notes.map((record) => {
+    const item = document.createElement("li");
+    const date = new Date(record.at);
+    item.textContent = `${formatDay(date)}　${labels[record.feeling]}${record.memo ? `：${record.memo}` : ""}`;
+    return item;
+  }));
+  el.doctorEmpty.hidden = notes.length > 0;
+  const periodRecords = state.records.filter((record) => new Date(record.at) >= start).slice().reverse();
+  el.printRecordRows.replaceChildren(...periodRecords.map((record) => {
+    const row = document.createElement("tr");
+    const date = new Date(record.at);
+    const cells = [
+      `${date.getMonth() + 1}/${date.getDate()} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")} ${record.period === "morning" ? "朝" : "夜"}`,
+      `${record.systolic}/${record.diastolic}`,
+      String(record.pulse),
+      labels[record.feeling] || record.feeling,
+      recordSummary(record)
+    ];
+    cells.forEach((text) => { const cell = document.createElement("td"); cell.textContent = text; row.append(cell); });
+    return row;
+  }));
 }
 
 function average(records, key) { return records.length ? Math.round(records.reduce((sum, item) => sum + item[key], 0) / records.length) : null; }

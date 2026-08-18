@@ -11,7 +11,7 @@
   <link rel="manifest" href="manifest.webmanifest?v=2">
   <link rel="icon" href="icon.svg?v=2" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
-  <link rel="stylesheet" href="styles.css?v=3">
+  <link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
   <main class="app-shell">
@@ -52,9 +52,10 @@
         <fieldset>
           <legend>いまの調子</legend>
           <div class="feeling-options">
-            <label><input type="radio" name="feeling" value="usual" checked><span>いつもどおり</span></label>
-            <label><input type="radio" name="feeling" value="tired"><span>少ししんどい</span></label>
-            <label><input type="radio" name="feeling" value="rough"><span>かなりしんどい</span></label>
+            <label><input type="radio" name="feeling" value="good"><span>よかった</span></label>
+            <label><input type="radio" name="feeling" value="usual" checked><span>普通</span></label>
+            <label><input type="radio" name="feeling" value="tired"><span>しんどい</span></label>
+            <label><input type="radio" name="feeling" value="worse"><span>悪化</span></label>
           </div>
         </fieldset>
 
@@ -79,6 +80,42 @@
       <span class="guidance-mark" aria-hidden="true">♥</span>
       <div><small>玄牙から</small><h2 id="guidanceTitle"></h2><p id="guidanceText"></p></div>
     </section>
+
+    <section class="condition-card">
+      <div class="section-title compact"><div><p>体調の流れ</p><h2>この4週間、どうだった？</h2></div></div>
+      <div class="condition-chart" id="conditionChart">
+        <div class="chart-labels" aria-hidden="true"><span>よかった</span><span>普通</span><span>しんどい</span><span>悪化</span></div>
+        <div class="chart-area">
+          <div class="chart-lines" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+          <svg id="conditionSvg" viewBox="0 0 280 132" preserveAspectRatio="none" role="img" aria-label="最近4週間の体調グラフ"></svg>
+        </div>
+      </div>
+      <p class="chart-empty" id="chartEmpty">体調を選んで記録すると、ここに流れが見えてくる。</p>
+      <div class="chart-dates" id="chartDates"></div>
+    </section>
+
+    <details class="doctor-card" id="doctorCard">
+      <summary><span><small>診察のとき</small><strong>「最近どう？」を見せる</strong></span><b>開く</b></summary>
+      <div class="doctor-body">
+        <div class="doctor-actions"><button id="printButton" type="button">印刷・PDF保存</button></div>
+        <p class="doctor-period" id="doctorPeriod"></p>
+        <div class="condition-counts" id="conditionCounts"></div>
+        <div class="doctor-stats">
+          <div><span>7日間の血圧平均</span><strong id="doctorBpAverage">記録なし</strong></div>
+          <div><span>夜の記録</span><strong id="doctorNightSummary">記録なし</strong></div>
+        </div>
+        <h3>しんどい・悪化の日</h3>
+        <ul class="doctor-notes" id="doctorNotes"></ul>
+        <p class="doctor-empty" id="doctorEmpty">この期間に「しんどい・悪化」の記録はない。</p>
+        <section class="print-records print-only">
+          <h3>4週間の測定記録</h3>
+          <table>
+            <thead><tr><th>日時</th><th>血圧</th><th>脈</th><th>体調</th><th>食事・薬・メモ</th></tr></thead>
+            <tbody id="printRecordRows"></tbody>
+          </table>
+        </section>
+      </div>
+    </details>
 
     <section class="average-card">
       <div class="section-title compact"><div><p>最近7日</p><h2>智実のいつもの範囲を知る</h2></div></div>
@@ -110,6 +147,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=2" defer></script>
+  <script src="app.js?v=7" defer></script>
 </body>
 </html>
