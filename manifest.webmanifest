@@ -1,0 +1,15 @@
+{
+  "name": "からだの音｜血圧習慣",
+  "short_name": "からだの音",
+  "description": "血圧を無理なく測る習慣をつくり、その日の身体を残すアプリ",
+  "lang": "ja",
+  "start_url": "./?v=2",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fcf8fd",
+  "theme_color": "#4e61a8",
+  "icons": [
+    { "src": "icon.svg?v=2", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "apple-touch-icon.png?v=2", "sizes": "180x180", "type": "image/png" }
+  ]
+}
